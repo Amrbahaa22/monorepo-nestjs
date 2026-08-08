@@ -13,8 +13,8 @@
     "@monorepo/ledger": "workspace:*",
     "@monorepo/orchestrator": "workspace:*",
     "@monorepo/payments-api": "workspace:*",
-    "@nestjs/core": "^10.4.15",
-    "@nestjs/testing": "^10.4.15",
+    "@nestjs/core": "^11.1.28",
+    "@nestjs/testing": "^11.1.28",
     "kafkajs": "^2.2.4",
     "postgres": "^3.4.5"
   },

@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@monorepo/domain": "workspace:*",
-    "@nestjs/common": "^10.4.15",
+    "@nestjs/common": "^11.1.28",
     "ioredis": "^5.4.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
