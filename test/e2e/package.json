@@ -1,0 +1,29 @@
+{
+  "name": "@monorepo/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "lint": "biome check src",
+    "test:e2e": "jest --runInBand --testTimeout=180000"
+  },
+  "dependencies": {
+    "@monorepo/contracts": "workspace:*",
+    "@monorepo/db-kit": "workspace:*",
+    "@monorepo/kafka-kit": "workspace:*",
+    "@monorepo/ledger": "workspace:*",
+    "@monorepo/orchestrator": "workspace:*",
+    "@monorepo/payments-api": "workspace:*",
+    "@nestjs/core": "^10.4.15",
+    "@nestjs/testing": "^10.4.15",
+    "kafkajs": "^2.2.4",
+    "postgres": "^3.4.5"
+  },
+  "devDependencies": {
+    "@testcontainers/kafka": "^10.16.0",
+    "@testcontainers/postgresql": "^10.16.0",
+    "@testcontainers/redis": "^10.16.0",
+    "supertest": "^7.0.0",
+    "testcontainers": "^10.16.0",
+    "@types/supertest": "^6.0.2"
+  }
+}

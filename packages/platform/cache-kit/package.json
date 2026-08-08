@@ -1,0 +1,19 @@
+{
+  "name": "@monorepo/cache-kit",
+  "version": "0.0.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "biome check src",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@monorepo/domain": "workspace:*",
+    "@nestjs/common": "^10.4.15",
+    "ioredis": "^5.4.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1"
+  }
+}

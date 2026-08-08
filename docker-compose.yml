@@ -1,0 +1,221 @@
+x-app-build: &app-build
+  context: .
+  dockerfile: docker/Dockerfile
+
+x-app-env: &app-env
+  NODE_ENV: production
+  # In-network listener; localhost:9092 only works from the host.
+  KAFKA_BROKERS: kafka:29092
+  REDIS_URL: redis://redis:6379
+  MINIO_ENDPOINT: minio
+  MINIO_PORT: "9000"
+  MINIO_ACCESS_KEY: minioadmin
+  MINIO_SECRET_KEY: minioadmin
+  PAYMENTS_API_DATABASE_URL: postgres://postgres:postgres@postgres:5432/payments_api
+  ORCHESTRATOR_DATABASE_URL: postgres://postgres:postgres@postgres:5432/orchestrator
+  LEDGER_DATABASE_URL: postgres://postgres:postgres@postgres:5432/ledger
+
+x-infra-ready: &infra-ready
+  postgres:
+    condition: service_healthy
+  redis:
+    condition: service_healthy
+  topics-init:
+    condition: service_completed_successfully
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./docker/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 10
+
+  kafka:
+    image: apache/kafka:4.3.1
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:29092,PLAINTEXT_HOST://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      # Off on purpose: a typo'd topic must fail loudly, not silently appear
+      # with default partitioning.
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    ports:
+      - "9092:9092"
+    healthcheck:
+      test:
+        ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list"]
+      interval: 10s
+      retries: 15
+
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      retries: 10
+
+  # One-shot topic provisioning. Consumers subscribe to retry tiers at boot,
+  # so every ladder topic must exist before any app starts.
+  topics-init:
+    image: apache/kafka:4.3.1
+    entrypoint: ["/bin/bash", "/init-topics.sh"]
+    environment:
+      KAFKA_BROKERS: kafka:29092
+    volumes:
+      - ./docker/init-topics.sh:/init-topics.sh:ro
+    restart: "no"
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+  # One-shot migration jobs. Services wait for these to exit 0 before booting,
+  # so migrations never race across replicas.
+  payments-api-migrate:
+    build:
+      <<: *app-build
+      args: { APP: payments-api }
+    environment: *app-env
+    command: ["node", "dist/db/migrate-cli.js"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  orchestrator-migrate:
+    build:
+      <<: *app-build
+      args: { APP: orchestrator }
+    environment: *app-env
+    command: ["node", "dist/db/migrate-cli.js"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  ledger-migrate:
+    build:
+      <<: *app-build
+      args: { APP: ledger }
+    environment: *app-env
+    command: ["node", "dist/db/migrate-cli.js"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  payments-api:
+    build:
+      <<: *app-build
+      args: { APP: payments-api }
+    environment:
+      <<: *app-env
+      PORT: "3000"
+    ports:
+      - "3000:3000"
+    depends_on:
+      <<: *infra-ready
+      payments-api-migrate:
+        condition: service_completed_successfully
+
+  orchestrator:
+    build:
+      <<: *app-build
+      args: { APP: orchestrator }
+    environment: *app-env
+    depends_on:
+      <<: *infra-ready
+      orchestrator-migrate:
+        condition: service_completed_successfully
+
+  ledger:
+    build:
+      <<: *app-build
+      args: { APP: ledger }
+    environment: *app-env
+    depends_on:
+      <<: *infra-ready
+      ledger-migrate:
+        condition: service_completed_successfully
+
+  risk-screening:
+    build:
+      <<: *app-build
+      args: { APP: risk-screening }
+    environment: *app-env
+    depends_on:
+      topics-init:
+        condition: service_completed_successfully
+
+  payout-connector:
+    build:
+      <<: *app-build
+      args: { APP: payout-connector }
+    environment: *app-env
+    depends_on:
+      topics-init:
+        condition: service_completed_successfully
+
+  fx-quote:
+    build:
+      <<: *app-build
+      args: { APP: fx-quote }
+    environment:
+      <<: *app-env
+      FX_QUOTE_PORT: "3001"
+    ports:
+      - "3001:3001"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  document-service:
+    build:
+      <<: *app-build
+      args: { APP: document-service }
+    environment:
+      <<: *app-env
+      DOCUMENT_SERVICE_PORT: "3002"
+    ports:
+      - "3002:3002"
+    depends_on:
+      minio:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  miniodata:

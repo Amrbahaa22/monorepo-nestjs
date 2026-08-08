@@ -1,0 +1,27 @@
+{
+  "name": "@monorepo/fx-quote",
+  "version": "0.0.0",
+  "private": true,
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "biome check src",
+    "test": "jest",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@monorepo/cache-kit": "workspace:*",
+    "@monorepo/contracts": "workspace:*",
+    "@monorepo/domain": "workspace:*",
+    "@monorepo/observability": "workspace:*",
+    "@nestjs/common": "^10.4.15",
+    "@nestjs/core": "^10.4.15",
+    "@nestjs/platform-express": "^10.4.15",
+    "ioredis": "^5.4.1",
+    "nestjs-pino": "^4.1.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "uuid": "^11.0.3",
+    "zod": "^3.23.8"
+  }
+}

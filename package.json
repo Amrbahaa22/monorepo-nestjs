@@ -1,0 +1,30 @@
+{
+    "name": "monorepo-nestjs",
+    "version": "0.0.0",
+    "private": true,
+    "packageManager": "bun@1.2.19",
+    "workspaces": [
+        "apps/*",
+        "packages/*",
+        "packages/platform/*",
+        "test/e2e"
+    ],
+    "scripts": {
+        "build": "turbo run build",
+        "lint": "turbo run lint",
+        "test": "turbo run test",
+        "check:deps": "depcruise --config .dependency-cruiser.cjs apps packages",
+        "prepare": "lefthook install"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "^2.5.7",
+        "@types/jest": "^30.0.0",
+        "@types/node": "^26.1.2",
+        "dependency-cruiser": "^18.1.1",
+        "jest": "^30.4.2",
+        "lefthook": "^2.1.10",
+        "ts-jest": "^29.4.12",
+        "turbo": "^2.10.8",
+        "typescript": "~5.9.3"
+    }
+}

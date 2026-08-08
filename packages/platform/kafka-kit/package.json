@@ -1,0 +1,21 @@
+{
+  "name": "@monorepo/kafka-kit",
+  "version": "0.0.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "biome check src",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@monorepo/contracts": "workspace:*",
+    "@monorepo/domain": "workspace:*",
+    "@nestjs/common": "^10.4.15",
+    "kafkajs": "^2.2.4",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "zod": "^3.23.8"
+  }
+}

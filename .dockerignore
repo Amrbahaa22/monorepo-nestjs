@@ -1,0 +1,11 @@
+node_modules
+**/node_modules
+**/dist
+**/.turbo
+.turbo
+.git
+.cursor
+.qodo
+docs
+# Keep test/e2e/package.json: it is a declared workspace member.
+test/e2e/src
